@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>三年级 STAMP 中文口说模拟练习</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 700px;
+      margin: auto;
+      line-height: 1.6;
+    }
+    h1, h2 {
+      text-align: center;
+    }
+    #question {
+      font-size: 1.2em;
+      margin: 20px 0;
+    }
+    button {
+      margin: 5px;
+      padding: 10px 20px;
+      font-size: 1em;
+    }
+    #timer {
+      font-size: 1.2em;
+      color: red;
+      margin-top: 10px;
+    }
+    audio {
+      display: block;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>STAMP 口说模拟练习</h1>
+  <h2 id="question"></h2>
+  <div id="timer">03:00</div>
+  <button onclick="startRecording()">开始录音 / Start</button>
+  <button onclick="stopRecording()">停止 / Stop</button>
+  <button onclick="addRecording()" id="addBtn" disabled>补充录音 / Add</button>
+  <button onclick="rerecord()" id="reBtn" disabled>重新录音 / Rerecord</button>
+  <button onclick="playRecording()">播放录音 / Listen</button>
+  <audio id="player" controls></audio>
+
+  <script>
+    const questions = [
+      "3. Please talk about what job you want to do when you grow up.\n\n请你介绍一下你的学校",
+    ];
+
+    let currentQuestionIndex = 0;
+    let mediaRecorder;
+    let audioChunks = [];
+    let finalChunks = [];
+    let audioBlob;
+    let addUsed = false;
+    let rerecordUsed = false;
+    let timeLeft = 180; // 3 minutes
+    let timerInterval;
+    let isRecording = false;
+
+    document.getElementById("question").innerText = questions[currentQuestionIndex];
+
+    function updateTimerDisplay() {
+      let minutes = Math.floor(timeLeft / 60).toString().padStart(2, "0");
+      let seconds = (timeLeft % 60).toString().padStart(2, "0");
+      document.getElementById("timer").innerText = `${minutes}:${seconds}`;
+    }
+
+    function startTimer() {
+      timerInterval = setInterval(() => {
+        if (timeLeft <= 0) {
+          stopRecording();
+        } else {
+          timeLeft--;
+          updateTimerDisplay();
+        }
+      }, 1000);
+    }
+
+    async function startRecording() {
+      if (isRecording) return;
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        finalChunks.push(new Blob(audioChunks));
+        document.getElementById("addBtn").disabled = addUsed;
+        document.getElementById("reBtn").disabled = rerecordUsed;
+      };
+      mediaRecorder.start();
+      startTimer();
+      isRecording = true;
+    }
+
+    function stopRecording() {
+      if (!isRecording) return;
+      mediaRecorder.stop();
+      clearInterval(timerInterval);
+      isRecording = false;
+    }
+
+    function addRecording() {
+      if (addUsed || isRecording) return;
+      addUsed = true;
+      startRecording();
+    }
+
+    function rerecord() {
+      if (rerecordUsed || isRecording) return;
+      rerecordUsed = true;
+      finalChunks = [];
+      timeLeft = 180;
+      updateTimerDisplay();
+      startRecording();
+    }
+
+    function playRecording() {
+      if (finalChunks.length === 0) return;
+      audioBlob = new Blob(finalChunks, { type: 'audio/webm' });
+      const url = URL.createObjectURL(audioBlob);
+      document.getElementById("player").src = url;
+    }
+  </script>
+</body>
+</html>
